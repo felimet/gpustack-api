@@ -1,0 +1,33 @@
+# =============================================================================
+# GPUStack Server 設定（server-only，worker 由 gpustack-worker 容器負責）
+#
+# Docker Desktop 固定 IP 架構：
+#   gpustack-net gateway : 172.100.10.1（推論容器透過此 IP 可達）
+#   server               : 172.100.10.2（本檔 advertise_address）
+#   worker               : 172.100.10.3（docker-compose worker_ip CLI arg）
+#
+# 此檔掛載至容器：/etc/gpustack/config.yaml（:ro）
+# Worker 設定透過 docker-compose command 以 CLI flag 傳入，不在此檔
+# =============================================================================
+
+# Server 在 gpustack-net 的固定 IP（worker 連線依此地址找 server）
+advertise_address: "172.100.10.2"
+
+debug: false
+
+data_dir: /var/lib/gpustack
+
+# Web UI + HTTP API
+port: 80
+
+# Worker 連線用內部 API
+api_port: 30080
+
+# Prometheus scrape target
+metrics_port: 10161
+
+# Worker 由獨立容器（gpustack-worker）負責，此容器只跑 server
+enable_worker: false
+
+# Worker 下載模型時啟用 hf_transfer 加速（token 由環境變數注入）
+enable_hf_transfer: true

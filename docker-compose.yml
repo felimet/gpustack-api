@@ -1,0 +1,156 @@
+# =============================================================================
+# GPUStack v2.1.2 — Server + Worker 分離部署（Docker Desktop / WSL2 bridge 模式）
+#
+# 網路架構：
+#   gpustack（server）  172.100.10.2  — Web UI + Higress gateway（無 GPU）
+#   gpustack-worker     172.100.10.3  — GPU runtime + 推論容器管理
+#   gpustack-net        172.100.10.0/24，gateway 固定 172.100.10.1
+#   cloudflared                     — Cloudflare Tunnel（http://gpustack:80）
+#
+# 推論容器路由：
+#   Higress → worker_ip 172.100.10.1:PORT → pause pod（--network host, 0.0.0.0:PORT）
+#   172.100.10.1 是 bridge gateway，同時存在於 host network namespace
+#
+# 啟動前：
+#   1. cp .env.example .env && vim .env
+#   2. docker compose up -d
+#   3. 在 Cloudflare Zero Trust 建立 Tunnel，複製 Token 填入 .env
+# =============================================================================
+
+name: gpustack
+
+services:
+
+  # ===========================================================================
+  # Server：Web UI + API + Higress gateway（不含 GPU worker）
+  # ===========================================================================
+  gpustack:
+    image: gpustack/gpustack:${GPUSTACK_VERSION:-v2.1.2}
+    container_name: gpustack
+    restart: unless-stopped
+    networks:
+      gpustack-net:
+        ipv4_address: 172.100.10.2
+    ports:
+      - "8089:80"       # Web UI + HTTP API（外部存取）
+      - "30080:30080"   # 內部 API（worker 連線用）
+      - "10161:10161"   # Server metrics
+    environment:
+      GPUSTACK_BOOTSTRAP_PASSWORD: "${GPUSTACK_BOOTSTRAP_PASSWORD}"
+      GPUSTACK_TOKEN: "${GPUSTACK_TOKEN}"
+      GPUSTACK_HUGGINGFACE_TOKEN: "${HUGGINGFACE_TOKEN}"
+    volumes:
+      - ./scripts/entrypoint-server.sh:/entrypoint-init.sh:ro
+      - gpustack-data:/var/lib/gpustack
+      - ./config/gpustack.yaml:/etc/gpustack/config.yaml:ro
+    entrypoint: ["/bin/sh", "/entrypoint-init.sh"]
+    command: ["--config", "/etc/gpustack/config.yaml"]
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:80/healthz"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "100m"
+        max-file: "5"
+
+  # ===========================================================================
+  # Worker：GPU runtime + docker.sock + 推論容器生命週期管理
+  #
+  # --worker-ip 172.100.10.1（bridge gateway）：
+  #   推論容器用 --network host，綁定 0.0.0.0:PORT，包含 172.100.10.1 介面
+  #   Higress 路由至 172.100.10.1:PORT 即可抵達推論容器
+  # ===========================================================================
+  gpustack-worker:
+    image: gpustack/gpustack:${GPUSTACK_VERSION:-v2.1.2}
+    container_name: gpustack-worker
+    restart: unless-stopped
+    runtime: nvidia
+    privileged: true
+    ipc: host  
+    networks:
+      gpustack-net:
+        ipv4_address: 172.100.10.3
+    ports:
+      - "10150:10150"   # Worker port
+      - "10151:10151"   # Worker metrics
+    environment:
+      NVIDIA_VISIBLE_DEVICES: "all"
+      NVIDIA_DRIVER_CAPABILITIES: "all"
+      GPUSTACK_TOKEN: "${GPUSTACK_TOKEN}"
+      GPUSTACK_HUGGINGFACE_TOKEN: "${HUGGINGFACE_TOKEN}"
+      HF_HUB_ENABLE_HF_TRANSFER: "1"
+      GPUSTACK_RUNTIME_DOCKER_RESOURCE_INJECTION_POLICY: "Env"
+      GPUSTACK_RUNTIME_DEPLOY_MIRRORED_NAME: "gpustack-worker"
+    volumes:
+      - ./scripts/entrypoint-worker.sh:/entrypoint-init.sh:ro
+      - gpustack-worker-data:/var/lib/gpustack
+      - ./models:/var/lib/gpustack/models:ro
+      - "${CACHE_DIR:-/opt/gpustack/cache}:/var/lib/gpustack/cache"
+      - /var/run/docker.sock:/var/run/docker.sock
+    entrypoint: ["/bin/sh", "/entrypoint-init.sh"]
+    command:
+      - "--server-url"
+      - "http://172.100.10.2"
+      - "--worker-name"
+      - "rtx3080-quad-node"
+      - "--worker-ip"
+      - "172.100.10.1"
+      - "--worker-port"
+      - "10150"
+      - "--worker-metrics-port"
+      - "10151"
+    depends_on:
+      gpustack:
+        condition: service_healthy
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "100m"
+        max-file: "5"
+
+  # ===========================================================================
+  # Cloudflare Tunnel
+  # Public Hostname service URL：http://gpustack:80（容器名稱解析）
+  # ===========================================================================
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: gpustack-cloudflared
+    restart: unless-stopped
+    networks:
+      gpustack-net:
+        ipv4_address: 172.100.10.4
+    command: tunnel --no-autoupdate run --token ${CLOUDFLARE_TUNNEL_TOKEN}
+    depends_on:
+      gpustack:
+        condition: service_healthy
+      gpustack-worker:
+        condition: service_started
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "3"
+
+# =============================================================================
+# Networks — 固定 subnet，gateway 永遠是 172.100.10.1
+# =============================================================================
+networks:
+  gpustack-net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.100.10.0/24
+          gateway: 172.100.10.1
+
+# =============================================================================
+# Volumes
+# =============================================================================
+volumes:
+  gpustack-data:
+    driver: local
+  gpustack-worker-data:
+    driver: local
