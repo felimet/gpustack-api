@@ -12,6 +12,8 @@
     --code-bg:#141414; --code-border:#2e2e2e;
     --win-color:#4fc3f7; --bash-color:#a5d6a7;
     --sidebar-w:260px; --toc-w:220px;
+    --max-page:1440px;
+    --side-gap:max(0px, calc((100vw - var(--max-page)) / 2));
     --font:'Inter',system-ui,-apple-system,sans-serif;
     --mono:'JetBrains Mono','Fira Code',ui-monospace,monospace;
   }
@@ -23,7 +25,9 @@
   .topnav{position:fixed;top:0;left:0;right:0;z-index:100;height:56px;
     background:rgba(15,15,15,.94);backdrop-filter:blur(12px);
     border-bottom:1px solid var(--border);
-    display:flex;align-items:center;padding:0 24px;gap:14px}
+    display:flex;align-items:center;
+    padding-left:calc(var(--side-gap) + 24px);
+    padding-right:calc(var(--side-gap) + 24px);gap:14px}
   .logo{display:flex;align-items:center;gap:10px;font-size:.95rem;font-weight:600;
     color:var(--text);cursor:pointer}
   .logo svg{color:var(--accent);flex-shrink:0}
@@ -49,7 +53,7 @@
   .layout{display:flex;padding-top:56px;min-height:100vh}
 
   /* ── SIDEBAR ── */
-  .sidebar{position:fixed;top:56px;left:0;bottom:0;width:var(--sidebar-w);
+  .sidebar{position:fixed;top:56px;left:var(--side-gap);bottom:0;width:var(--sidebar-w);
     overflow-y:auto;padding:24px 0 48px;border-right:1px solid var(--border);
     background:var(--bg);scrollbar-width:thin;scrollbar-color:var(--border) transparent}
   .sidebar::-webkit-scrollbar{width:4px}
@@ -65,11 +69,16 @@
     background:var(--accent-bg);font-weight:500}
 
   /* ── MAIN ── */
-  .main{margin-left:var(--sidebar-w);margin-right:var(--toc-w);
-    flex:1;padding:48px 56px;max-width:960px;min-width:0}
+  .main{
+    margin-left:calc(var(--side-gap) + var(--sidebar-w));
+    margin-right:calc(var(--side-gap) + var(--toc-w));
+    flex:1;padding:48px 56px;max-width:960px;min-width:0;
+    background:var(--surface);
+    box-shadow:0 0 0 1px var(--border);
+    min-height:calc(100vh - 56px)}
 
   /* ── TOC ── */
-  .toc{position:fixed;top:56px;right:0;bottom:0;width:var(--toc-w);
+  .toc{position:fixed;top:56px;right:var(--side-gap);bottom:0;width:var(--toc-w);
     overflow-y:auto;padding:32px 20px 48px;border-left:1px solid var(--border);
     background:var(--bg);scrollbar-width:thin;scrollbar-color:var(--border) transparent}
   .toc::-webkit-scrollbar{width:4px}
