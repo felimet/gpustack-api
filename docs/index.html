@@ -658,7 +658,7 @@ enable_hf_transfer: true</code></pre>
 docker compose logs cloudflared --tail=50</code></pre>
   <pre class="cp" data-os="bash"><code>docker compose logs cloudflared --tail=50</code></pre>
 </div>
-<p><strong>修正：</strong>CF Dashboard → Public Hostnames → 編輯 <code>sub-api</code> → Additional settings → Access 清空 → Save。等 30 秒 cloudflared 拉取新設定。</p>
+<p><strong>修正：</strong>CF Dashboard → Public Hostnames → 編輯 <code>sub-api</code> → Additional settings → Access 清空 → Save，cloudflared 自動拉取新設定後生效。</p>
 </div>
 
 <!-- ══════════════════════════════════════ CF-ACCESS ══ -->
@@ -1034,7 +1034,7 @@ docker exec gpustack curl -s http://172.100.10.1:&lt;PORT&gt;/health</code></pre
 <p>確認 Public Hostname service URL 為 <code>http://gpustack:80</code>（容器名稱）。</p>
 
 <h2 id="ts-502">API 回傳 502</h2>
-<div class="cl critical"><div class="ci">🚨</div><div>最常見根因：Public Hostname Additional settings → Access 欄位誤填了 Application。Service Token JWT 被靜默丟棄。修正：清空欄位，等 30 秒。</div></div>
+<div class="cl critical"><div class="ci">🚨</div><div>最常見根因：Public Hostname Additional settings → Access 欄位誤填了 Application。Service Token JWT 被靜默丟棄。修正：清空欄位，儲存後 cloudflared 自動生效。</div></div>
 
 <h2 id="ts-worker">Worker 無法連線</h2>
 <div class="cmd">
