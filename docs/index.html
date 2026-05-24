@@ -1,0 +1,1494 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GPUStack 部署手冊</title>
+<style>
+  :root {
+    --bg:#0f0f0f; --surface:#181818; --surface-2:#222; --border:#2a2a2a;
+    --text:#e2e2e2; --text-muted:#8a8a8a;
+    --accent:#e07b39; --accent-bg:rgba(224,123,57,.08);
+    --code-bg:#141414; --code-border:#2e2e2e;
+    --win-color:#4fc3f7; --bash-color:#a5d6a7;
+    --sidebar-w:260px; --toc-w:220px;
+    --font:'Inter',system-ui,-apple-system,sans-serif;
+    --mono:'JetBrains Mono','Fira Code',ui-monospace,monospace;
+  }
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth;font-size:15px}
+  body{font-family:var(--font);background:var(--bg);color:var(--text);line-height:1.7;min-height:100vh}
+
+  /* ── TOPNAV ── */
+  .topnav{position:fixed;top:0;left:0;right:0;z-index:100;height:56px;
+    background:rgba(15,15,15,.94);backdrop-filter:blur(12px);
+    border-bottom:1px solid var(--border);
+    display:flex;align-items:center;padding:0 24px;gap:14px}
+  .logo{display:flex;align-items:center;gap:10px;font-size:.95rem;font-weight:600;
+    color:var(--text);cursor:pointer}
+  .logo svg{color:var(--accent);flex-shrink:0}
+  .badge{font-size:.68rem;font-weight:700;background:var(--accent-bg);color:var(--accent);
+    border:1px solid rgba(224,123,57,.3);padding:2px 8px;border-radius:20px}
+  .topnav-right{margin-left:auto;display:flex;align-items:center;gap:8px}
+  .nav-btn{font-size:.78rem;color:var(--text-muted);background:none;border:none;
+    padding:5px 10px;border-radius:6px;cursor:pointer;transition:color .15s,background .15s}
+  .nav-btn:hover{color:var(--text);background:var(--surface)}
+
+  /* GLOBAL OS SWITCHER in topnav */
+  .os-switcher{display:flex;align-items:center;background:var(--surface);
+    border:1px solid var(--border);border-radius:8px;overflow:hidden}
+  .os-switcher button{font-size:.72rem;font-weight:600;padding:4px 12px;border:none;
+    background:none;cursor:pointer;transition:background .15s,color .15s;
+    display:flex;align-items:center;gap:5px;white-space:nowrap}
+  .os-switcher button.active[data-os="win"] {background:rgba(79,195,247,.15);color:var(--win-color)}
+  .os-switcher button.active[data-os="bash"]{background:rgba(165,214,167,.15);color:var(--bash-color)}
+  .os-switcher button:not(.active){color:var(--text-muted)}
+  .os-sep{width:1px;height:20px;background:var(--border)}
+
+  /* ── LAYOUT ── */
+  .layout{display:flex;padding-top:56px;min-height:100vh}
+
+  /* ── SIDEBAR ── */
+  .sidebar{position:fixed;top:56px;left:0;bottom:0;width:var(--sidebar-w);
+    overflow-y:auto;padding:24px 0 48px;border-right:1px solid var(--border);
+    background:var(--bg);scrollbar-width:thin;scrollbar-color:var(--border) transparent}
+  .sidebar::-webkit-scrollbar{width:4px}
+  .sidebar::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+  .nav-group{margin-bottom:6px}
+  .ng-title{font-size:.68rem;font-weight:700;text-transform:uppercase;
+    letter-spacing:.09em;color:var(--text-muted);padding:10px 20px 4px}
+  .ni{display:block;padding:5px 20px;font-size:.83rem;color:var(--text-muted);
+    text-decoration:none;border-left:2px solid transparent;cursor:pointer;
+    transition:color .12s,background .12s}
+  .ni:hover{color:var(--text);background:var(--surface)}
+  .ni.active{color:var(--accent);border-left-color:var(--accent);
+    background:var(--accent-bg);font-weight:500}
+
+  /* ── MAIN ── */
+  .main{margin-left:var(--sidebar-w);margin-right:var(--toc-w);
+    flex:1;padding:48px 56px;max-width:960px;min-width:0}
+
+  /* ── TOC ── */
+  .toc{position:fixed;top:56px;right:0;bottom:0;width:var(--toc-w);
+    overflow-y:auto;padding:32px 20px 48px;border-left:1px solid var(--border);
+    background:var(--bg);scrollbar-width:thin;scrollbar-color:var(--border) transparent}
+  .toc::-webkit-scrollbar{width:4px}
+  .toc::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+  .toc-title{font-size:.68rem;font-weight:700;text-transform:uppercase;
+    letter-spacing:.09em;color:var(--text-muted);margin-bottom:12px;
+    display:flex;align-items:center;gap:6px}
+  .ti{display:block;font-size:.77rem;color:var(--text-muted);text-decoration:none;
+    padding:3px 0 3px 12px;border-left:1px solid var(--border);margin-bottom:3px;
+    line-height:1.4;transition:color .12s,border-color .12s;cursor:pointer}
+  .ti:hover,.ti.active{color:var(--accent);border-left-color:var(--accent)}
+
+  /* ── PAGES ── */
+  .page{display:none}
+  .page.active{display:block;animation:fi .15s ease}
+  @keyframes fi{from{opacity:.5;transform:translateY(4px)}to{opacity:1;transform:none}}
+
+  /* ── TYPOGRAPHY ── */
+  .ph{margin-bottom:36px;padding-bottom:24px;border-bottom:1px solid var(--border)}
+  .bc{font-size:.73rem;color:var(--text-muted);margin-bottom:10px;
+    display:flex;align-items:center;gap:6px}
+  .bc .sep{color:var(--border)}
+  h1{font-size:1.95rem;font-weight:700;line-height:1.2;color:var(--text);margin-bottom:14px}
+  .sub{font-size:.95rem;color:var(--text-muted);line-height:1.65;
+    border-left:3px solid var(--accent);padding-left:14px}
+  h2{font-size:1.3rem;font-weight:600;color:var(--text);margin:40px 0 14px;
+    padding-bottom:8px;border-bottom:1px solid var(--border)}
+  h3{font-size:1rem;font-weight:600;color:var(--text);margin:24px 0 10px}
+  h4{font-size:.78rem;font-weight:700;color:var(--accent);margin:18px 0 7px;
+    text-transform:uppercase;letter-spacing:.06em}
+  p{margin-bottom:12px}
+  a{color:var(--accent);text-decoration:none;cursor:pointer}
+  a:hover{text-decoration:underline}
+  ul,ol{padding-left:22px;margin-bottom:12px}
+  li{margin-bottom:4px}
+  hr{border:none;border-top:1px solid var(--border);margin:32px 0}
+  code{font-family:var(--mono);font-size:.82em;background:var(--surface-2);
+    border:1px solid var(--code-border);padding:2px 6px;border-radius:4px;color:#f0a575}
+
+  /* ── PLAIN PRE (config/yaml/python — no tabs) ── */
+  pre{font-family:var(--mono);font-size:.82rem;background:var(--code-bg);
+    border:1px solid var(--code-border);border-radius:10px;padding:20px 22px;
+    overflow-x:auto;margin:14px 0;line-height:1.65;position:relative}
+  pre code{background:none;border:none;padding:0;color:#d4d4d4;font-size:inherit}
+  .lang{position:absolute;top:10px;right:14px;font-size:.62rem;text-transform:uppercase;
+    letter-spacing:.07em;color:var(--text-muted);font-family:var(--font)}
+
+  /* ── CMD BLOCK (tabbed shell commands) ── */
+  .cmd{border:1px solid var(--code-border);border-radius:10px;
+    overflow:hidden;margin:14px 0}
+  .cmd-bar{display:flex;background:var(--surface);border-bottom:1px solid var(--code-border)}
+  .ct{padding:7px 16px;font-size:.75rem;font-weight:600;border:none;background:none;
+    cursor:pointer;display:flex;align-items:center;gap:6px;
+    transition:color .15s,background .15s;color:var(--text-muted)}
+  .ct[data-os="win"].active {color:var(--win-color);background:rgba(79,195,247,.08);
+    border-bottom:2px solid var(--win-color)}
+  .ct[data-os="bash"].active{color:var(--bash-color);background:rgba(165,214,167,.08);
+    border-bottom:2px solid var(--bash-color)}
+  .ct:not(.active){border-bottom:2px solid transparent}
+  .ct-sep{width:1px;height:24px;background:var(--code-border);align-self:center}
+  .cp{font-family:var(--mono);font-size:.82rem;background:var(--code-bg);
+    padding:18px 22px;overflow-x:auto;line-height:1.65;color:#d4d4d4;display:none}
+  .cp.active{display:block}
+  /* OS-specific colors */
+  .cp[data-os="win"]  .k{color:#9cdcfe}   /* win blue  */
+  .cp[data-os="bash"] .k{color:#a5d6a7}   /* bash green*/
+
+  /* ── TABLES ── */
+  .tw{overflow-x:auto;margin:14px 0;border-radius:8px;border:1px solid var(--border)}
+  table{width:100%;border-collapse:collapse;font-size:.84rem}
+  th{text-align:left;padding:10px 16px;background:var(--surface);
+    border-bottom:1px solid var(--border);font-weight:600;color:var(--text-muted);
+    font-size:.72rem;text-transform:uppercase;letter-spacing:.06em}
+  td{padding:10px 16px;border-bottom:1px solid var(--border);vertical-align:top}
+  tr:last-child td{border-bottom:none}
+  tr:hover td{background:rgba(255,255,255,.02)}
+
+  /* ── CALLOUTS ── */
+  .cl{border-radius:8px;padding:14px 18px;margin:14px 0;font-size:.87rem;
+    display:flex;gap:12px;align-items:flex-start}
+  .ci{flex-shrink:0;font-size:1rem;margin-top:1px}
+  .cl.warn    {background:rgba(224,123,57,.08);border:1px solid rgba(224,123,57,.25);color:#e8a878}
+  .cl.info    {background:rgba(70,130,200,.07);border:1px solid rgba(70,130,200,.22);color:#88bbdf}
+  .cl.tip     {background:rgba(45,122,58,.08); border:1px solid rgba(45,122,58,.28); color:#7ec48a}
+  .cl.critical{background:rgba(180,50,50,.1);  border:1px solid rgba(180,50,50,.3);  color:#e07878}
+
+  /* ── ARCH ── */
+  .arch{background:var(--code-bg);border:1px solid var(--code-border);
+    border-radius:10px;padding:24px;margin:16px 0;overflow-x:auto}
+  .arch pre{margin:0;padding:0;background:transparent;border:none;
+    color:#c0c8cc;font-size:.8rem;line-height:1.75}
+
+  /* ── STEPS ── */
+  .steps{margin:24px 0}
+  .step{display:flex;gap:18px;margin-bottom:32px;position:relative}
+  .step:not(:last-child)::before{content:'';position:absolute;left:18px;top:42px;
+    bottom:-8px;width:2px;background:var(--border)}
+  .sn{width:38px;height:38px;border-radius:50%;flex-shrink:0;z-index:1;
+    background:var(--surface-2);border:2px solid var(--accent);
+    display:flex;align-items:center;justify-content:center;
+    font-size:.8rem;font-weight:700;color:var(--accent)}
+  .sb{flex:1;padding-top:7px}
+  .st{font-weight:600;font-size:.98rem;margin-bottom:8px;color:var(--text)}
+
+  /* ── MISC ── */
+  .env-k{font-family:var(--mono);font-size:.81rem;color:#f0a575;
+    background:var(--code-bg);padding:2px 6px;border-radius:4px;white-space:nowrap}
+  .pb{font-family:var(--mono);font-size:.78rem;background:var(--surface-2);
+    border:1px solid var(--code-border);padding:2px 7px;border-radius:4px;color:#9cdcfe}
+  .badge{display:inline-flex;align-items:center;gap:4px;font-size:.71rem;
+    font-weight:600;padding:2px 9px;border-radius:20px;white-space:nowrap;vertical-align:middle}
+  .badge .dot{width:5px;height:5px;border-radius:50%;background:currentColor}
+  .badge.ok {background:rgba(45,122,58,.14);color:#72d47e;border:1px solid rgba(45,122,58,.3)}
+  .badge.no {background:rgba(180,50,50,.12);color:#e07070;border:1px solid rgba(180,50,50,.28)}
+
+  @media(max-width:1200px){.toc{display:none}.main{margin-right:0}}
+  @media(max-width:800px){.sidebar{display:none}.main{margin-left:0;padding:28px 20px}}
+</style>
+</head>
+<body>
+
+<nav class="topnav">
+  <div class="logo" onclick="nav('overview')">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="2" y="3" width="20" height="14" rx="2"/>
+      <path d="M8 21h8M12 17v4"/>
+      <circle cx="8.5" cy="10" r="1.2" fill="currentColor" stroke="none"/>
+      <circle cx="15.5" cy="10" r="1.2" fill="currentColor" stroke="none"/>
+    </svg>
+    GPUStack 部署手冊
+  </div>
+  <span class="badge" style="background:var(--accent-bg);color:var(--accent);border:1px solid rgba(224,123,57,.3)">v2.1.2</span>
+  <div class="topnav-right">
+    <button class="nav-btn" onclick="nav('quickstart')">快速部署</button>
+    <button class="nav-btn" onclick="nav('api-usage')">呼叫 API</button>
+    <button class="nav-btn" onclick="nav('troubleshoot')">故障排查</button>
+    <span style="font-size:.73rem;color:var(--text-muted);background:var(--surface);border:1px solid var(--border);padding:3px 10px;border-radius:6px">Docker Compose</span>
+    <a class="nav-btn gh-btn" href="https://github.com/felimet/gpustack-api" target="_blank" rel="noopener" title="GitHub">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+      GitHub
+    </a>
+    <div style="width:1px;height:20px;background:var(--border)"></div>
+    <div class="os-switcher" id="global-os">
+      <button data-os="win" class="active" onclick="setOS('win')">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M3 5.5L10.5 4v7.5H3zm0 13L10.5 20v-7.5H3zm9 1.7L21 21.5V12.5H12zm0-20.4v8H21V2.5z"/></svg>
+        PowerShell
+      </button>
+      <div class="os-sep"></div>
+      <button data-os="bash" onclick="setOS('bash')">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M20 19.59V8l-6-6H6a2 2 0 00-2 2v15.59A2 2 0 005.41 21H18.6A2 2 0 0020 19.59zM13 9V3.5L18.5 9H13z"/></svg>
+        Bash
+      </button>
+    </div>
+  </div>
+</nav>
+
+<div class="layout">
+<aside class="sidebar">
+  <div class="nav-group">
+    <div class="ng-title">開始使用</div>
+    <span class="ni active" id="ni-overview"    onclick="nav('overview')">概述</span>
+    <span class="ni"        id="ni-quickstart"  onclick="nav('quickstart')">快速部署</span>
+    <span class="ni"        id="ni-envvars"     onclick="nav('envvars')">環境變數</span>
+  </div>
+  <div class="nav-group">
+    <div class="ng-title">網路 / 存取</div>
+    <span class="ni" id="ni-cf-tunnel"  onclick="nav('cf-tunnel')">Cloudflare Tunnel</span>
+    <span class="ni" id="ni-cf-access"  onclick="nav('cf-access')">Access Application</span>
+    <span class="ni" id="ni-svc-token"  onclick="nav('svc-token')">Service Token</span>
+  </div>
+  <div class="nav-group">
+    <div class="ng-title">模型</div>
+    <span class="ni" id="ni-models"    onclick="nav('models')">部署模型</span>
+    <span class="ni" id="ni-vlm"       onclick="nav('vlm')">VLM mmproj 設定</span>
+    <span class="ni" id="ni-api-usage" onclick="nav('api-usage')">呼叫 API</span>
+  </div>
+  <div class="nav-group">
+    <div class="ng-title">維運</div>
+    <span class="ni" id="ni-ops"          onclick="nav('ops')">維運指令</span>
+    <span class="ni" id="ni-ports"        onclick="nav('ports')">埠使用總覽</span>
+    <span class="ni" id="ni-troubleshoot" onclick="nav('troubleshoot')">故障排查</span>
+  </div>
+  <div class="nav-group">
+    <div class="ng-title">進階參考</div>
+    <span class="ni" id="ni-entrypoints" onclick="nav('entrypoints')">Entrypoint 腳本</span>
+    <span class="ni" id="ni-compose"     onclick="nav('compose')">docker-compose 參考</span>
+  </div>
+</aside>
+
+<main class="main">
+
+<!-- ══════════════════════════════════════ OVERVIEW ══ -->
+<div class="page active" id="page-overview">
+<div class="ph">
+  <div class="bc">開始使用 <span class="sep">›</span> 概述</div>
+  <h1>GPUStack 部署手冊</h1>
+  <p class="sub">單節點 LLM / VLM / Embedding / Rerank 推論服務，透過 Cloudflare Tunnel 對外暴露 API。Server / Worker 分離，Docker Compose 一鍵啟動，主機不需開放入站埠。</p>
+</div>
+
+<h2 id="arch">整體架構</h2>
+<div class="arch"><pre>
+外部用戶端（curl / OpenAI SDK / 瀏覽器）
+       │  HTTPS
+       ▼
+Cloudflare Edge ─────────────────────────────────────────────
+  ├─ sub-api.yourdomain.com/v1  →  CF Access Service Token（程式化 API）
+  └─ sub.yourdomain.com      →  CF Access Email 白名單（Web UI）
+       │
+       ▼  outbound-only Tunnel（主機不開放入站埠）
+cloudflared 容器（172.100.10.4）
+       │
+       ▼  http://gpustack:80
+gpustack server 容器（172.100.10.2）
+  Web UI  ·  Higress gateway  ·  API
+       │
+       ▼  depends_on: service_healthy
+gpustack-worker 容器（172.100.10.3）
+  NVIDIA Runtime  ·  docker.sock
+       │
+       ▼  GPUStack 動態產生推論容器
+llama.cpp / vLLM 推論容器（--network host，0.0.0.0:PORT）
+  路由：Higress → 172.100.10.1:PORT → host bridge gateway
+       │
+       ▼
+NVIDIA GPU 硬體（RTX 3080 × 4）</pre></div>
+
+<h2 id="network">網路設計</h2>
+<div class="tw"><table>
+  <thead><tr><th>容器</th><th>固定 IP</th><th>角色</th></tr></thead>
+  <tbody>
+    <tr><td><code>gpustack</code></td>            <td><span class="pb">172.100.10.2</span></td><td>Server — Web UI + Higress gateway（無 GPU）</td></tr>
+    <tr><td><code>gpustack-worker</code></td>     <td><span class="pb">172.100.10.3</span></td><td>Worker — NVIDIA Runtime + 推論容器管理</td></tr>
+    <tr><td><code>gpustack-cloudflared</code></td><td><span class="pb">172.100.10.4</span></td><td>Cloudflare Tunnel 出口節點</td></tr>
+    <tr><td>bridge gateway（宿主機）</td>          <td><span class="pb">172.100.10.1</span></td><td>推論路由出口；host network 介面</td></tr>
+  </tbody>
+</table></div>
+
+<h2 id="structure">目錄結構</h2>
+<pre><span class="lang">tree</span><code>.
+├── .env.example                 # 環境變數範本
+├── .env                         # 實際密碼（已 gitignore）
+├── docker-compose.yml           # 主堆疊（server + worker + cloudflared）
+├── config/
+│   ├── gpustack.yaml.example    # GPUStack server 設定範本
+│   └── gpustack.yaml            # 實際設定（已 gitignore）
+├── cloudflared/
+│   └── ACCESS_SETUP.md
+└── scripts/
+    ├── prereq.sh                # Fresh machine 前置安裝
+    ├── entrypoint-server.sh     # Server 初始化（worker_uuid）
+    └── entrypoint-worker.sh     # Worker 初始化（worker_uuid + float&lt;&lt;20 patch）</code></pre>
+
+<h2 id="prereq">前提條件</h2>
+<ul>
+  <li>Docker Desktop（含 Docker Compose v2）</li>
+  <li>NVIDIA 驅動（宿主機）</li>
+  <li>NVIDIA Container Toolkit（<code>prereq.sh</code> 可自動安裝）</li>
+  <li>Cloudflare 帳號，已建立 Zero Trust Tunnel</li>
+</ul>
+</div>
+
+<!-- ══════════════════════════════════════ QUICKSTART ══ -->
+<div class="page" id="page-quickstart">
+<div class="ph">
+  <div class="bc">開始使用 <span class="sep">›</span> 快速部署</div>
+  <h1>快速部署</h1>
+</div>
+
+<div class="steps">
+
+<div class="step">
+  <div class="sn">1</div>
+  <div class="sb">
+    <div class="st">前置依賴（fresh machine 才需要）</div>
+    <p>安裝 Docker Engine 與 NVIDIA Container Toolkit：</p>
+    <div class="cmd">
+      <div class="cmd-bar">
+        <button class="ct" data-os="win"  onclick="tabClick(this)">&#x229E; PowerShell</button>
+        <div class="ct-sep"></div>
+        <button class="ct" data-os="bash" onclick="tabClick(this)">$ Bash</button>
+      </div>
+      <pre class="cp" data-os="win"><code># prereq.sh 在 WSL2 內執行（Docker Desktop on Windows 通常已含依賴）
+wsl sudo bash scripts/prereq.sh</code></pre>
+      <pre class="cp" data-os="bash"><code>sudo bash scripts/prereq.sh</code></pre>
+    </div>
+  </div>
+</div>
+
+<div class="step">
+  <div class="sn">2</div>
+  <div class="sb">
+    <div class="st">環境變數</div>
+    <div class="cmd">
+      <div class="cmd-bar">
+        <button class="ct" data-os="win"  onclick="tabClick(this)">&#x229E; PowerShell</button>
+        <div class="ct-sep"></div>
+        <button class="ct" data-os="bash" onclick="tabClick(this)">$ Bash</button>
+      </div>
+      <pre class="cp" data-os="win"><code>Copy-Item .env.example .env
+notepad .env</code></pre>
+      <pre class="cp" data-os="bash"><code>cp .env.example .env
+vim .env</code></pre>
+    </div>
+    <div class="tw"><table>
+      <thead><tr><th>變數</th><th>說明</th></tr></thead>
+      <tbody>
+        <tr><td><span class="env-k">GPUSTACK_BOOTSTRAP_PASSWORD</span></td><td>首次登入 admin 密碼</td></tr>
+        <tr><td><span class="env-k">GPUSTACK_TOKEN</span></td><td>Server/Worker 共用 Token（<strong>無前綴</strong>，≤ 58 字元）</td></tr>
+        <tr><td><span class="env-k">CLOUDFLARE_TUNNEL_TOKEN</span></td><td>CF Dashboard 複製的 Tunnel Token</td></tr>
+      </tbody>
+    </table></div>
+    <div class="cl warn"><div class="ci">⚠</div><div><code>GPUSTACK_TOKEN</code> 不帶 <code>gpustack_</code> 前綴，長度 ≤ 58 字元。帶前綴在 legacy auth path 靜默失敗，Worker 無法連線。</div></div>
+  </div>
+</div>
+
+<div class="step">
+  <div class="sn">3</div>
+  <div class="sb">
+    <div class="st">GPUStack 設定檔</div>
+    <div class="cmd">
+      <div class="cmd-bar">
+        <button class="ct" data-os="win"  onclick="tabClick(this)">&#x229E; PowerShell</button>
+        <div class="ct-sep"></div>
+        <button class="ct" data-os="bash" onclick="tabClick(this)">$ Bash</button>
+      </div>
+      <pre class="cp" data-os="win"><code>Copy-Item config\gpustack.yaml.example config\gpustack.yaml</code></pre>
+      <pre class="cp" data-os="bash"><code>cp config/gpustack.yaml.example config/gpustack.yaml</code></pre>
+    </div>
+    <p>Docker Desktop 本機部署不需修改。Server IP 固定 <code>172.100.10.2</code>，gateway <code>172.100.10.1</code>。</p>
+  </div>
+</div>
+
+<div class="step">
+  <div class="sn">4</div>
+  <div class="sb">
+    <div class="st">啟動</div>
+    <div class="cmd">
+      <div class="cmd-bar">
+        <button class="ct" data-os="win"  onclick="tabClick(this)">&#x229E; PowerShell</button>
+        <div class="ct-sep"></div>
+        <button class="ct" data-os="bash" onclick="tabClick(this)">$ Bash</button>
+      </div>
+      <pre class="cp" data-os="win"><code>docker compose up -d
+docker compose logs -f gpustack</code></pre>
+      <pre class="cp" data-os="bash"><code>docker compose up -d
+docker compose logs -f gpustack</code></pre>
+    </div>
+    <p>正常啟動後容器狀態：</p>
+    <div class="tw"><table>
+      <thead><tr><th>容器</th><th>狀態</th></tr></thead>
+      <tbody>
+        <tr><td><code>gpustack</code></td>             <td><span class="badge ok"><span class="dot"></span>healthy</span></td></tr>
+        <tr><td><code>gpustack-worker</code></td>      <td><span class="badge ok"><span class="dot"></span>running</span></td></tr>
+        <tr><td><code>gpustack-cloudflared</code></td> <td><span class="badge ok"><span class="dot"></span>running</span></td></tr>
+      </tbody>
+    </table></div>
+  </div>
+</div>
+
+<div class="step">
+  <div class="sn">5</div>
+  <div class="sb">
+    <div class="st">驗證</div>
+    <h4>Web UI（本機）</h4>
+    <pre><code>http://localhost:8089    帳號：admin    密碼：GPUSTACK_BOOTSTRAP_PASSWORD</code></pre>
+    <h4>API（本機）</h4>
+    <div class="cmd">
+      <div class="cmd-bar">
+        <button class="ct" data-os="win"  onclick="tabClick(this)">&#x229E; PowerShell</button>
+        <div class="ct-sep"></div>
+        <button class="ct" data-os="bash" onclick="tabClick(this)">$ Bash</button>
+      </div>
+      <pre class="cp" data-os="win"><code>Invoke-RestMethod -Uri "http://localhost:8089/v1/models" `
+  -Headers @{ Authorization = "Bearer &lt;gpustack-api-key&gt;" }</code></pre>
+      <pre class="cp" data-os="bash"><code>curl -s http://localhost:8089/v1/models \
+  -H "Authorization: Bearer &lt;gpustack-api-key&gt;" | jq .</code></pre>
+    </div>
+    <h4>外網 API（Cloudflare Tunnel）</h4>
+    <div class="cmd">
+      <div class="cmd-bar">
+        <button class="ct" data-os="win"  onclick="tabClick(this)">&#x229E; PowerShell</button>
+        <div class="ct-sep"></div>
+        <button class="ct" data-os="bash" onclick="tabClick(this)">$ Bash</button>
+      </div>
+      <pre class="cp" data-os="win"><code>Invoke-RestMethod -Method POST `
+  -Uri "https://sub-api.yourdomain.com/v1/chat/completions" `
+  -Headers @{
+    "CF-Access-Client-Id"     = "&lt;client-id&gt;"
+    "CF-Access-Client-Secret" = "&lt;client-secret&gt;"
+    "Authorization"           = "Bearer &lt;gpustack-api-key&gt;"
+  } `
+  -ContentType "application/json" `
+  -Body '{"model":"qwen2.5-7b","messages":[{"role":"user","content":"Hi"}],"max_tokens":50}'</code></pre>
+      <pre class="cp" data-os="bash"><code>curl -s "https://sub-api.yourdomain.com/v1/chat/completions" \
+  -H "CF-Access-Client-Id: &lt;client-id&gt;" \
+  -H "CF-Access-Client-Secret: &lt;client-secret&gt;" \
+  -H "Authorization: Bearer &lt;gpustack-api-key&gt;" \
+  -H "Content-Type: application/json" \
+  -d '{"model":"qwen2.5-7b","messages":[{"role":"user","content":"Hi"}],"max_tokens":50}' \
+  | jq .</code></pre>
+    </div>
+    <h4>OpenAI SDK（兩平台相同）</h4>
+    <pre><span class="lang">python</span><code>from openai import OpenAI
+
+client = OpenAI(
+    base_url="https://sub-api.yourdomain.com/v1",
+    api_key="&lt;gpustack-api-key&gt;",
+    default_headers={
+        "CF-Access-Client-Id":     "&lt;client-id&gt;",
+        "CF-Access-Client-Secret": "&lt;client-secret&gt;",
+    },
+)
+resp = client.chat.completions.create(
+    model="&lt;model-name&gt;",
+    messages=[{"role": "user", "content": "Hello"}],
+)
+print(resp.choices[0].message.content)</code></pre>
+  </div>
+</div>
+
+</div><!-- /steps -->
+</div>
+
+<!-- ══════════════════════════════════════ ENVVARS ══ -->
+<div class="page" id="page-envvars">
+<div class="ph">
+  <div class="bc">開始使用 <span class="sep">›</span> 環境變數</div>
+  <h1>環境變數</h1>
+  <p class="sub"><code>.env.example</code> 複製為 <code>.env</code> 後填入實際值。<code>.env</code> 已加入 <code>.gitignore</code>。</p>
+</div>
+
+<div class="cmd">
+  <div class="cmd-bar">
+    <button class="ct" data-os="win"  onclick="tabClick(this)">&#x229E; PowerShell</button>
+    <div class="ct-sep"></div>
+    <button class="ct" data-os="bash" onclick="tabClick(this)">$ Bash</button>
+  </div>
+  <pre class="cp" data-os="win"><code>Copy-Item .env.example .env; notepad .env</code></pre>
+  <pre class="cp" data-os="bash"><code>cp .env.example .env && vim .env</code></pre>
+</div>
+
+<h2 id="env-all">完整變數說明</h2>
+<div class="tw"><table>
+  <thead><tr><th>變數</th><th>預設值</th><th>說明</th></tr></thead>
+  <tbody>
+    <tr><td><span class="env-k">GPUSTACK_VERSION</span></td>            <td><code>v2.1.2</code></td><td>Docker image 版本標籤</td></tr>
+    <tr><td><span class="env-k">GPUSTACK_BOOTSTRAP_PASSWORD</span></td> <td>（必填）</td><td>首次啟動 admin 密碼。資料庫已存在時不再套用</td></tr>
+    <tr><td><span class="env-k">GPUSTACK_TOKEN</span></td>              <td>（必填）</td><td>Server/Worker 共用 Token。<strong>不帶前綴，≤ 58 字元</strong></td></tr>
+    <tr><td><span class="env-k">HUGGINGFACE_TOKEN</span></td>           <td>（選填）</td><td>下載 Gated 模型（Llama 3 等）時需要</td></tr>
+    <tr><td><span class="env-k">DATA_DIR</span></td>                    <td><code>/opt/gpustack/data</code></td><td>Server 資料目錄（宿主機）</td></tr>
+    <tr><td><span class="env-k">CACHE_DIR</span></td>                   <td><code>/opt/gpustack/cache</code></td><td>模型快取目錄，掛載至容器 <code>/var/lib/gpustack/cache</code></td></tr>
+    <tr><td><span class="env-k">CLOUDFLARE_TUNNEL_TOKEN</span></td>     <td>（必填）</td><td>CF Zero Trust Dashboard 產生的 Tunnel Token</td></tr>
+  </tbody>
+</table></div>
+
+<div class="cl critical"><div class="ci">🔑</div><div><strong>Token 格式：</strong>不帶 <code>gpustack_</code> 前綴，長度 ≤ 58 字元。帶前綴的 token 在 legacy auth path 靜默失敗，Worker 無法連線 Server。</div></div>
+
+<h2 id="env-wsl2">WSL2 路徑建議</h2>
+<div class="cmd">
+  <div class="cmd-bar">
+    <button class="ct" data-os="win"  onclick="tabClick(this)">&#x229E; PowerShell</button>
+    <div class="ct-sep"></div>
+    <button class="ct" data-os="bash" onclick="tabClick(this)">$ Bash</button>
+  </div>
+  <pre class="cp" data-os="win"><code># .env 中設定 CACHE_DIR
+# Windows 磁碟掛載路徑（透過 WSL2）
+CACHE_DIR=/mnt/d/models
+
+# 或 WSL2 home 路徑
+CACHE_DIR=/home/ai-user/models</code></pre>
+  <pre class="cp" data-os="bash"><code># WSL2 Linux 路徑（效能較佳）
+CACHE_DIR=/home/ai-user/models
+
+# 或 Windows 磁碟掛載
+CACHE_DIR=/mnt/d/models</code></pre>
+</div>
+
+<h2 id="env-yaml">gpustack.yaml 設定</h2>
+<pre><span class="lang">yaml</span><code>advertise_address: "172.100.10.2"   # Server 在 gpustack-net 的固定 IP
+debug: false
+data_dir: /var/lib/gpustack
+port: 80           # Web UI + HTTP API
+api_port: 30080    # Worker 連線用內部 API
+metrics_port: 10161
+enable_worker: false        # 此容器只跑 server
+enable_hf_transfer: true</code></pre>
+</div>
+
+<!-- ══════════════════════════════════════ CF-TUNNEL ══ -->
+<div class="page" id="page-cf-tunnel">
+<div class="ph">
+  <div class="bc">網路 / 存取 <span class="sep">›</span> Cloudflare Tunnel</div>
+  <h1>Cloudflare Tunnel</h1>
+  <p class="sub">主機只需 outbound 443，無需開放任何入站埠。</p>
+</div>
+
+<h2 id="ct-strategy">雙 Hostname 策略</h2>
+<div class="tw"><table>
+  <thead><tr><th>Hostname</th><th>CF Access</th><th>用途</th></tr></thead>
+  <tbody>
+    <tr><td><code>sub-api.yourdomain.com</code></td><td>Service Token</td><td>程式化 API</td></tr>
+    <tr><td><code>sub.yourdomain.com</code></td>    <td>Email 白名單</td><td>Web UI 管理員</td></tr>
+  </tbody>
+</table></div>
+
+<h2 id="ct-create">建立 Tunnel</h2>
+<p>Zero Trust → Networks → Tunnels → <strong>Create a tunnel</strong>（Cloudflared）。複製 Token 填入 <code>.env</code>。</p>
+
+<h2 id="ct-hostnames">Public Hostnames</h2>
+<div class="tw"><table>
+  <thead><tr><th>Subdomain</th><th>Service URL</th><th>Additional Settings → Access</th></tr></thead>
+  <tbody>
+    <tr><td><code>sub-api.yourdomain.com</code></td><td><code>http://gpustack:80</code></td><td><span class="badge no">不填（留空）</span></td></tr>
+    <tr><td><code>sub.yourdomain.com</code></td>    <td><code>http://gpustack:80</code></td><td>不填</td></tr>
+  </tbody>
+</table></div>
+
+<div class="cl critical"><div class="ci">🚨</div><div><strong>Additional Settings → Access 必須留空。</strong>填了 Application 後，cloudflared 啟用 <code>originRequest.access.required:true</code>，Service Token JWT（<code>"type":"service_token"</code>）被 QUIC 層靜默丟棄，CF edge 回 <strong>502</strong>，無任何 HTTP 日誌。</div></div>
+
+<h2 id="ct-502">502 診斷</h2>
+<div class="cmd">
+  <div class="cmd-bar">
+    <button class="ct" data-os="win"  onclick="tabClick(this)">&#x229E; PowerShell</button>
+    <div class="ct-sep"></div>
+    <button class="ct" data-os="bash" onclick="tabClick(this)">$ Bash</button>
+  </div>
+  <pre class="cp" data-os="win"><code># API 請求在 log 中完全沒有 HTTP request log
+docker compose logs cloudflared --tail=50</code></pre>
+  <pre class="cp" data-os="bash"><code>docker compose logs cloudflared --tail=50</code></pre>
+</div>
+<p><strong>修正：</strong>CF Dashboard → Public Hostnames → 編輯 <code>sub-api</code> → Additional settings → Access 清空 → Save。等 30 秒 cloudflared 拉取新設定。</p>
+</div>
+
+<!-- ══════════════════════════════════════ CF-ACCESS ══ -->
+<div class="page" id="page-cf-access">
+<div class="ph">
+  <div class="bc">網路 / 存取 <span class="sep">›</span> Access Application</div>
+  <h1>Access Application</h1>
+  <p class="sub">Zero Trust → Access → Applications。每個 Hostname 建立對應 Application。</p>
+</div>
+
+<h2 id="ca-app-a">Application A：Web UI</h2>
+<div class="tw"><table>
+  <thead><tr><th>欄位</th><th>值</th></tr></thead>
+  <tbody>
+    <tr><td>Application name</td><td><code>GPUStack UI</code></td></tr>
+    <tr><td>Subdomain</td><td><code>sub.yourdomain.com</code></td></tr>
+    <tr><td>Session duration</td><td><code>24h</code></td></tr>
+  </tbody>
+</table></div>
+<p>Policy → Include → Emails：填入管理員 email 清單。</p>
+
+<h2 id="ca-app-b">Application B：API</h2>
+<div class="tw"><table>
+  <thead><tr><th>欄位</th><th>值</th></tr></thead>
+  <tbody>
+    <tr><td>Application name</td><td><code>GPUStack API</code></td></tr>
+    <tr><td>Subdomain</td><td><code>sub-api.yourdomain.com/v1</code></td></tr>
+    <tr><td>Session duration</td><td><code>24h</code></td></tr>
+  </tbody>
+</table></div>
+<p>Policy → Include → Service Auth → <strong>Service Token</strong>（見 <a onclick="nav('svc-token')">Service Token</a>）。</p>
+
+<h2 id="ca-security">安全層級</h2>
+<div class="tw"><table>
+  <thead><tr><th>威脅</th><th>緩解</th></tr></thead>
+  <tbody>
+    <tr><td>未授權 API 存取</td><td>CF Service Token（第一關）+ GPUStack API Key（第二關）</td></tr>
+    <tr><td>未授權 UI 存取</td><td>Email whitelist，CF 負責 OAuth</td></tr>
+    <tr><td>DDoS</td><td>Cloudflare L7 防護</td></tr>
+    <tr><td>主機暴露面</td><td>只需 outbound 443，不開 80 入站</td></tr>
+  </tbody>
+</table></div>
+</div>
+
+<!-- ══════════════════════════════════════ SVC-TOKEN ══ -->
+<div class="page" id="page-svc-token">
+<div class="ph">
+  <div class="bc">網路 / 存取 <span class="sep">›</span> Service Token</div>
+  <h1>Service Token</h1>
+  <p class="sub">程式化 API 的 Cloudflare 身份憑證，獨立於 GPUStack API Key。</p>
+</div>
+
+<h2 id="st-create">建立</h2>
+<p>Zero Trust → Access → Service Auth → Service Tokens → <strong>Create Service Token</strong></p>
+<ul><li>Name：<code>gpustack-api-client</code></li><li>Duration：1 年或 No expiration</li></ul>
+<div class="cl warn"><div class="ci">⚠</div><div>Secret 只顯示一次，立即保存 <code>CF-Access-Client-Id</code> 與 <code>CF-Access-Client-Secret</code>。</div></div>
+
+<h2 id="st-usage">API 請求</h2>
+<div class="cmd">
+  <div class="cmd-bar">
+    <button class="ct" data-os="win"  onclick="tabClick(this)">&#x229E; PowerShell</button>
+    <div class="ct-sep"></div>
+    <button class="ct" data-os="bash" onclick="tabClick(this)">$ Bash</button>
+  </div>
+  <pre class="cp" data-os="win"><code>Invoke-RestMethod -Uri "https://sub-api.yourdomain.com/v1/models" `
+  -Headers @{
+    "CF-Access-Client-Id"     = "&lt;client-id&gt;"
+    "CF-Access-Client-Secret" = "&lt;client-secret&gt;"
+    "Authorization"           = "Bearer &lt;gpustack-api-key&gt;"
+  }</code></pre>
+  <pre class="cp" data-os="bash"><code>curl -sf \
+  -H "CF-Access-Client-Id: &lt;client-id&gt;" \
+  -H "CF-Access-Client-Secret: &lt;client-secret&gt;" \
+  -H "Authorization: Bearer &lt;gpustack-api-key&gt;" \
+  https://sub-api.yourdomain.com/v1/models | jq .</code></pre>
+</div>
+
+<h2 id="st-key">GPUStack API Key</h2>
+<p>Web UI → Settings → <strong>API Keys</strong> → Create API Key。用於 <code>Authorization: Bearer</code> header。</p>
+
+<h2 id="st-test">Chat Completions 驗證</h2>
+<div class="cmd">
+  <div class="cmd-bar">
+    <button class="ct" data-os="win"  onclick="tabClick(this)">&#x229E; PowerShell</button>
+    <div class="ct-sep"></div>
+    <button class="ct" data-os="bash" onclick="tabClick(this)">$ Bash</button>
+  </div>
+  <pre class="cp" data-os="win"><code>Invoke-RestMethod -Method POST `
+  -Uri "https://sub-api.yourdomain.com/v1/chat/completions" `
+  -Headers @{
+    "CF-Access-Client-Id"     = "&lt;client-id&gt;"
+    "CF-Access-Client-Secret" = "&lt;client-secret&gt;"
+    "Authorization"           = "Bearer &lt;gpustack-api-key&gt;"
+  } `
+  -ContentType "application/json" `
+  -Body '{"model":"&lt;model-name&gt;","messages":[{"role":"user","content":"Hello"}],"max_tokens":100}'</code></pre>
+  <pre class="cp" data-os="bash"><code>curl -s "https://sub-api.yourdomain.com/v1/chat/completions" \
+  -H "CF-Access-Client-Id: &lt;client-id&gt;" \
+  -H "CF-Access-Client-Secret: &lt;client-secret&gt;" \
+  -H "Authorization: Bearer &lt;gpustack-api-key&gt;" \
+  -H "Content-Type: application/json" \
+  -d '{"model":"&lt;model-name&gt;","messages":[{"role":"user","content":"Hello"}],"max_tokens":100}' \
+  | jq .</code></pre>
+</div>
+</div>
+
+<!-- ══════════════════════════════════════ MODELS ══ -->
+<div class="page" id="page-models">
+<div class="ph">
+  <div class="bc">模型 <span class="sep">›</span> 部署模型</div>
+  <h1>部署模型</h1>
+  <p class="sub">透過 Web UI 部署 LLM、VLM、Embedding、Rerank 模型。</p>
+</div>
+
+<h2 id="m-deploy">Web UI 部署</h2>
+<ol>
+  <li>Web UI → Models → <strong>Deploy Model</strong></li>
+  <li>來源：HuggingFace / Ollama / 本地路徑</li>
+  <li>HuggingFace 格式：<code>org/repo</code></li>
+  <li>選量化版本與 GPU 數量 → Deploy</li>
+</ol>
+
+<h2 id="m-ref">4× RTX 3080 推薦配置（~36 GB 合計）</h2>
+<div class="tw"><table>
+  <thead><tr><th>模型</th><th>量化</th><th>VRAM</th><th>GPU 數</th></tr></thead>
+  <tbody>
+    <tr><td>Llama-3.1-8B</td><td>FP16</td>   <td>~16 GB</td><td>2</td></tr>
+    <tr><td>Qwen2.5-14B</td> <td>Q8</td>     <td>~15 GB</td><td>2</td></tr>
+    <tr><td>Qwen2.5-32B</td> <td>Q4_K_M</td> <td>~20 GB</td><td>2–3</td></tr>
+    <tr><td>Qwen2-VL-7B</td> <td>FP16</td>   <td>~15 GB</td><td>2</td></tr>
+  </tbody>
+</table></div>
+
+<h2 id="m-oom">OOM 處理</h2>
+<p>降低量化精度，或在 worker command 加入：</p>
+<pre><span class="lang">yaml</span><code>command:
+  - "--server-url"
+  - "http://172.100.10.2"
+  - "--system-reserved-vram"
+  - "1"    # 保留 1 GiB</code></pre>
+</div>
+
+<!-- ══════════════════════════════════════ VLM ══ -->
+<div class="page" id="page-vlm">
+<div class="ph">
+  <div class="bc">模型 <span class="sep">›</span> VLM mmproj 設定</div>
+  <h1>VLM mmproj 設定</h1>
+  <p class="sub">GPUStack v2.1.2 部署 GGUF VLM 時，mmproj 不自動傳入 llama.cpp。</p>
+</div>
+
+<div class="cl warn"><div class="ci">⚠</div><div>症狀：<code>"image input is not supported"</code>。根因：GPUStack 下載 mmproj 但不自動傳 <code>--mmproj</code> 給 llama.cpp。</div></div>
+
+<h2 id="vlm-path">mmproj 快取路徑（container 內）</h2>
+<pre><code>/var/lib/gpustack/cache/huggingface/&lt;ORG&gt;/&lt;REPO&gt;/mmproj-F32.gguf</code></pre>
+
+<h2 id="vlm-api">API 方式</h2>
+<div class="cmd">
+  <div class="cmd-bar">
+    <button class="ct" data-os="win"  onclick="tabClick(this)">&#x229E; PowerShell</button>
+    <div class="ct-sep"></div>
+    <button class="ct" data-os="bash" onclick="tabClick(this)">$ Bash</button>
+  </div>
+  <pre class="cp" data-os="win"><code># 1. 查詢 model id
+$models = Invoke-RestMethod -Uri "http://localhost:8089/v2/models" `
+  -Headers @{ Authorization = "Basic $([Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes('admin:&lt;PASSWORD&gt;')))" }
+$models.items | Select-Object id, name
+
+# 2. 更新 backend_parameters
+$body = @{
+  source            = "local_path"
+  local_path        = "&lt;GGUF 路徑&gt;"
+  name              = "&lt;MODEL_NAME&gt;"
+  backend           = "llama.cpp"
+  backend_parameters = @("--mmproj &lt;mmproj 完整路徑&gt;")
+  replicas          = 1
+} | ConvertTo-Json
+Invoke-RestMethod -Method PUT `
+  -Uri "http://localhost:8089/v2/models/&lt;MODEL_ID&gt;" `
+  -Headers @{ Authorization = "Basic ..." } `
+  -ContentType "application/json" -Body $body
+
+# 3. 刪除 instance，強制以新參數重啟
+Invoke-RestMethod -Method DELETE `
+  -Uri "http://localhost:8089/v2/model-instances/&lt;INSTANCE_ID&gt;" `
+  -Headers @{ Authorization = "Basic ..." }</code></pre>
+  <pre class="cp" data-os="bash"><code># 1. 查詢 model id
+curl -s http://localhost:8089/v2/models \
+  -u "admin:&lt;PASSWORD&gt;" \
+  | python3 -c "import sys,json;[print(x['id'],x['name']) for x in json.load(sys.stdin)['items']]"
+
+# 2. 更新 backend_parameters
+curl -s -X PUT "http://localhost:8089/v2/models/&lt;MODEL_ID&gt;" \
+  -u "admin:&lt;PASSWORD&gt;" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "source":"local_path","local_path":"&lt;GGUF 路徑&gt;",
+    "name":"&lt;MODEL_NAME&gt;","backend":"llama.cpp",
+    "backend_parameters":["--mmproj &lt;mmproj 完整路徑&gt;"],
+    "replicas":1
+  }'
+
+# 3. 刪除 instance
+curl -s -X DELETE "http://localhost:8089/v2/model-instances/&lt;INSTANCE_ID&gt;" \
+  -u "admin:&lt;PASSWORD&gt;"</code></pre>
+</div>
+
+<h2 id="vlm-webui">Web UI 方式</h2>
+<ol>
+  <li>Models → 編輯模型 → Backend Parameters 加入：<code>--mmproj /var/lib/gpustack/cache/huggingface/&lt;ORG&gt;/&lt;REPO&gt;/mmproj-F32.gguf</code></li>
+  <li>儲存 → 刪除 model instance → 自動以新參數重啟</li>
+</ol>
+</div>
+
+<!-- ══════════════════════════════════════ OPS ══ -->
+<div class="page" id="page-ops">
+<div class="ph">
+  <div class="bc">維運 <span class="sep">›</span> 維運指令</div>
+  <h1>維運指令</h1>
+  <p class="sub">日常狀態確認、重啟、更新、備份指令速查。</p>
+</div>
+
+<h2 id="ops-status">狀態確認</h2>
+<div class="cmd">
+  <div class="cmd-bar">
+    <button class="ct" data-os="win"  onclick="tabClick(this)">&#x229E; PowerShell</button>
+    <div class="ct-sep"></div>
+    <button class="ct" data-os="bash" onclick="tabClick(this)">$ Bash</button>
+  </div>
+  <pre class="cp" data-os="win"><code>docker compose ps
+docker compose logs -f gpustack
+docker compose logs -f gpustack-worker
+docker compose logs -f gpustack-cloudflared</code></pre>
+  <pre class="cp" data-os="bash"><code>docker compose ps
+docker compose logs -f gpustack
+docker compose logs -f gpustack-worker
+docker compose logs -f gpustack-cloudflared</code></pre>
+</div>
+
+<h2 id="ops-restart">重啟</h2>
+<div class="cmd">
+  <div class="cmd-bar">
+    <button class="ct" data-os="win"  onclick="tabClick(this)">&#x229E; PowerShell</button>
+    <div class="ct-sep"></div>
+    <button class="ct" data-os="bash" onclick="tabClick(this)">$ Bash</button>
+  </div>
+  <pre class="cp" data-os="win"><code>docker compose restart gpustack
+docker compose restart gpustack-worker
+
+# 完全停止再啟動
+docker compose down; docker compose up -d</code></pre>
+  <pre class="cp" data-os="bash"><code>docker compose restart gpustack
+docker compose restart gpustack-worker
+
+# 完全停止再啟動
+docker compose down && docker compose up -d</code></pre>
+</div>
+
+<h2 id="ops-update">版本更新</h2>
+<div class="cmd">
+  <div class="cmd-bar">
+    <button class="ct" data-os="win"  onclick="tabClick(this)">&#x229E; PowerShell</button>
+    <div class="ct-sep"></div>
+    <button class="ct" data-os="bash" onclick="tabClick(this)">$ Bash</button>
+  </div>
+  <pre class="cp" data-os="win"><code>notepad .env   # 修改 GPUSTACK_VERSION
+docker compose pull; docker compose up -d</code></pre>
+  <pre class="cp" data-os="bash"><code>vim .env       # 修改 GPUSTACK_VERSION
+docker compose pull && docker compose up -d</code></pre>
+</div>
+
+<h2 id="ops-reset">資料庫重建</h2>
+<div class="cmd">
+  <div class="cmd-bar">
+    <button class="ct" data-os="win"  onclick="tabClick(this)">&#x229E; PowerShell</button>
+    <div class="ct-sep"></div>
+    <button class="ct" data-os="bash" onclick="tabClick(this)">$ Bash</button>
+  </div>
+  <pre class="cp" data-os="win"><code>docker compose down -v</code></pre>
+  <pre class="cp" data-os="bash"><code>docker compose down -v</code></pre>
+</div>
+<div class="cl critical"><div class="ci">🚨</div><div><code>-v</code> 刪除所有 named volumes（含資料庫）。模型快取掛載至宿主機，不受影響。</div></div>
+
+<h2 id="ops-backup">備份</h2>
+<div class="cmd">
+  <div class="cmd-bar">
+    <button class="ct" data-os="win"  onclick="tabClick(this)">&#x229E; PowerShell</button>
+    <div class="ct-sep"></div>
+    <button class="ct" data-os="bash" onclick="tabClick(this)">$ Bash</button>
+  </div>
+  <pre class="cp" data-os="win"><code>$date = Get-Date -Format "yyyyMMdd"
+New-Item -ItemType Directory -Force backup | Out-Null
+docker run --rm `
+  -v gpustack_gpustack-data:/data `
+  -v "${PWD}/backup:/backup" `
+  alpine tar czf /backup/gpustack-data-$date.tar.gz -C /data .</code></pre>
+  <pre class="cp" data-os="bash"><code>mkdir -p backup
+docker run --rm \
+  -v gpustack_gpustack-data:/data \
+  -v "$(pwd)/backup:/backup" \
+  alpine tar czf /backup/gpustack-data-$(date +%Y%m%d).tar.gz -C /data .</code></pre>
+</div>
+</div>
+
+<!-- ══════════════════════════════════════ PORTS ══ -->
+<div class="page" id="page-ports">
+<div class="ph">
+  <div class="bc">維運 <span class="sep">›</span> 埠使用總覽</div>
+  <h1>埠使用總覽</h1>
+  <p class="sub">宿主機埠映射與服務對應關係一覽。</p>
+</div>
+<div class="tw"><table>
+  <thead><tr><th>宿主機埠</th><th>容器埠</th><th>服務</th><th>外部可存取</th></tr></thead>
+  <tbody>
+    <tr><td><span class="pb">8089</span></td> <td><span class="pb">80</span></td>    <td>Web UI + HTTP API</td>           <td><span class="badge ok"><span class="dot"></span>本機直連；Tunnel 走 80</span></td></tr>
+    <tr><td><span class="pb">30080</span></td><td><span class="pb">30080</span></td><td>內部 API（worker 連線）</td>        <td><span class="badge no"><span class="dot"></span>僅內部</span></td></tr>
+    <tr><td><span class="pb">10150</span></td><td><span class="pb">10150</span></td><td>Worker port</td>                   <td><span class="badge no"><span class="dot"></span>僅內部</span></td></tr>
+    <tr><td><span class="pb">10151</span></td><td><span class="pb">10151</span></td><td>Worker metrics（Prometheus）</td>  <td><span class="badge no"><span class="dot"></span>僅內部</span></td></tr>
+    <tr><td><span class="pb">10161</span></td><td><span class="pb">10161</span></td><td>Server metrics（Prometheus）</td>  <td><span class="badge no"><span class="dot"></span>僅內部</span></td></tr>
+  </tbody>
+</table></div>
+<div class="cl info"><div class="ci">ℹ</div><div>推論容器用 <code>--network host</code>，不映射宿主機埠。透過 bridge gateway <code>172.100.10.1</code> 路由，埠號動態分配。</div></div>
+</div>
+
+<!-- ══════════════════════════════════════ TROUBLESHOOT ══ -->
+<div class="page" id="page-troubleshoot">
+<div class="ph">
+  <div class="bc">維運 <span class="sep">›</span> 故障排查</div>
+  <h1>故障排查</h1>
+  <p class="sub">常見問題診斷流程與解決方式。</p>
+</div>
+
+<h2 id="ts-gpu">GPU 無法偵測</h2>
+<div class="cmd">
+  <div class="cmd-bar">
+    <button class="ct" data-os="win"  onclick="tabClick(this)">&#x229E; PowerShell</button>
+    <div class="ct-sep"></div>
+    <button class="ct" data-os="bash" onclick="tabClick(this)">$ Bash</button>
+  </div>
+  <pre class="cp" data-os="win"><code>docker exec gpustack-worker nvidia-smi</code></pre>
+  <pre class="cp" data-os="bash"><code>docker exec gpustack-worker nvidia-smi</code></pre>
+</div>
+<ul>
+  <li>確認 <code>runtime: nvidia</code> 在 docker-compose.yml gpustack-worker</li>
+  <li>確認 <code>NVIDIA_VISIBLE_DEVICES: all</code></li>
+  <li>重新執行 <code>prereq.sh</code> 確認 NVIDIA Container Toolkit</li>
+</ul>
+
+<h2 id="ts-404">模型 404 / no running instances</h2>
+<div class="cmd">
+  <div class="cmd-bar">
+    <button class="ct" data-os="win"  onclick="tabClick(this)">&#x229E; PowerShell</button>
+    <div class="ct-sep"></div>
+    <button class="ct" data-os="bash" onclick="tabClick(this)">$ Bash</button>
+  </div>
+  <pre class="cp" data-os="win"><code>docker logs gpustack-worker 2>&1 | Select-Object -Last 30
+docker ps | Select-String '\-run\-'
+docker exec gpustack curl -s http://172.100.10.1:&lt;PORT&gt;/health</code></pre>
+  <pre class="cp" data-os="bash"><code>docker logs gpustack-worker 2>&1 | tail -30
+docker ps | grep '\-run\-'
+docker exec gpustack curl -s http://172.100.10.1:&lt;PORT&gt;/health</code></pre>
+</div>
+
+<h2 id="ts-tunnel">Tunnel 未連線</h2>
+<div class="cmd">
+  <div class="cmd-bar">
+    <button class="ct" data-os="win"  onclick="tabClick(this)">&#x229E; PowerShell</button>
+    <div class="ct-sep"></div>
+    <button class="ct" data-os="bash" onclick="tabClick(this)">$ Bash</button>
+  </div>
+  <pre class="cp" data-os="win"><code>docker compose logs gpustack-cloudflared</code></pre>
+  <pre class="cp" data-os="bash"><code>docker compose logs gpustack-cloudflared</code></pre>
+</div>
+<p>確認 Public Hostname service URL 為 <code>http://gpustack:80</code>（容器名稱）。</p>
+
+<h2 id="ts-502">API 回傳 502</h2>
+<div class="cl critical"><div class="ci">🚨</div><div>最常見根因：Public Hostname Additional settings → Access 欄位誤填了 Application。Service Token JWT 被靜默丟棄。修正：清空欄位，等 30 秒。</div></div>
+
+<h2 id="ts-worker">Worker 無法連線</h2>
+<div class="cmd">
+  <div class="cmd-bar">
+    <button class="ct" data-os="win"  onclick="tabClick(this)">&#x229E; PowerShell</button>
+    <div class="ct-sep"></div>
+    <button class="ct" data-os="bash" onclick="tabClick(this)">$ Bash</button>
+  </div>
+  <pre class="cp" data-os="win"><code>Invoke-RestMethod -Uri "http://localhost:8089/healthz"
+docker logs gpustack-worker 2>&1 | Select-String -Pattern "token|auth|connect" -CaseSensitive:$false</code></pre>
+  <pre class="cp" data-os="bash"><code>curl -sf http://localhost:8089/healthz
+docker logs gpustack-worker 2>&1 | grep -i "token\|auth\|connect"</code></pre>
+</div>
+<p>確認 <code>GPUSTACK_TOKEN</code> 無前綴且長度 ≤ 58 字元。</p>
+
+<h2 id="ts-oom">OOM</h2>
+<p>降量化（Q4_K_M），或加 <code>--system-reserved-vram &lt;GiB&gt;</code> 於 worker command。</p>
+
+<h2 id="ts-vlm">VLM 圖片報錯</h2>
+<p>見 <a onclick="nav('vlm')">VLM mmproj 設定</a>。</p>
+</div>
+
+<!-- ══════════════════════════════════════ ENTRYPOINTS ══ -->
+<div class="page" id="page-entrypoints">
+<div class="ph">
+  <div class="bc">進階參考 <span class="sep">›</span> Entrypoint 腳本</div>
+  <h1>Entrypoint 腳本</h1>
+  <p class="sub">WSL2 環境 workaround。腳本在容器內（Linux）執行，以下僅顯示容器內的 Bash 內容。</p>
+</div>
+
+<h2 id="ep-server">entrypoint-server.sh</h2>
+<pre><span class="lang">bash</span><code>#!/bin/sh
+set -e
+DATA=/var/lib/gpustack
+mkdir -p "$DATA"
+
+# WSL2 無 /sys/class/dmi/id/product_uuid → 讀 /proc/sys/kernel/random/uuid
+if [ ! -f "$DATA/worker_uuid" ]; then
+    UUID=$(cat /proc/sys/kernel/random/uuid 2>/dev/null || \
+           python3 -c "import uuid; print(uuid.uuid4())")
+    printf '%s' "$UUID" > "$DATA/worker_uuid"
+fi
+
+# 預寫 token 檔案（覆蓋 GPUStack 自動生成行為）
+if [ -n "$GPUSTACK_TOKEN" ] && [ ! -f "$DATA/token" ]; then
+    printf '%s' "$GPUSTACK_TOKEN" > "$DATA/token"
+fi
+
+exec /usr/bin/entrypoint.sh "$@"</code></pre>
+
+<h2 id="ep-worker">entrypoint-worker.sh</h2>
+<pre><span class="lang">bash</span><code>#!/bin/sh
+set -e
+DATA=/var/lib/gpustack
+mkdir -p "$DATA"
+
+if [ ! -f "$DATA/worker_uuid" ]; then
+    UUID=$(cat /proc/sys/kernel/random/uuid 2>/dev/null || \
+           python3 -c "import uuid; print(uuid.uuid4())")
+    printf '%s' "$UUID" > "$DATA/worker_uuid"
+fi
+
+# WSL2 NVML 回傳 float，Python 無法對 float 做 << 位移 → int() 轉型
+RUNTIME_PY=$(python3 -c \
+    "import gpustack.detectors.runtime.runtime as m; print(m.__file__)" 2>/dev/null || true)
+if [ -n "$RUNTIME_PY" ] && grep -q "dev\.memory << 20" "$RUNTIME_PY" 2>/dev/null; then
+    sed -i \
+        's/dev\.memory << 20/int(dev.memory) << 20/g;
+         s/dev\.memory_used << 20/int(dev.memory_used) << 20/g' \
+        "$RUNTIME_PY"
+fi
+
+exec /usr/bin/entrypoint.sh "$@"</code></pre>
+
+<h2 id="ep-table">Workaround 對照表</h2>
+<div class="tw"><table>
+  <thead><tr><th>問題</th><th>根因</th><th>修正</th></tr></thead>
+  <tbody>
+    <tr><td><code>RuntimeError: worker_uuid</code></td><td>WSL2 無 DMI sysfs</td><td>讀 <code>/proc/sys/kernel/random/uuid</code></td></tr>
+    <tr><td><code>TypeError: float &lt;&lt; int</code></td><td>WSL2 NVML 回傳 float</td><td><code>int(dev.memory) &lt;&lt; 20</code></td></tr>
+  </tbody>
+</table></div>
+</div>
+
+<!-- ══════════════════════════════════════ COMPOSE ══ -->
+<div class="page" id="page-compose">
+<div class="ph">
+  <div class="bc">進階參考 <span class="sep">›</span> docker-compose 參考</div>
+  <h1>docker-compose 參考</h1>
+  <p class="sub">三個服務的設定說明與關鍵設計決策。</p>
+</div>
+
+<h2 id="dc-server">gpustack（Server）</h2>
+<pre><span class="lang">yaml</span><code>gpustack:
+  image: gpustack/gpustack:${GPUSTACK_VERSION:-v2.1.2}
+  networks:
+    gpustack-net:
+      ipv4_address: 172.100.10.2   # 固定 IP，worker 以此找 server
+  ports:
+    - "8089:80"       # Web UI + HTTP API
+    - "30080:30080"   # 內部 API（worker 連線）
+    - "10161:10161"   # Server metrics
+  healthcheck:
+    test: ["CMD","curl","-sf","http://localhost:80/healthz"]
+    interval: 30s; timeout: 10s; retries: 5; start_period: 60s</code></pre>
+
+<h2 id="dc-worker">gpustack-worker</h2>
+<pre><span class="lang">yaml</span><code>gpustack-worker:
+  runtime: nvidia       # NVIDIA Container Runtime
+  privileged: true
+  ipc: host             # 多 GPU NVLink 共享記憶體
+  networks:
+    gpustack-net:
+      ipv4_address: 172.100.10.3
+  environment:
+    NVIDIA_VISIBLE_DEVICES: "all"
+    HF_HUB_ENABLE_HF_TRANSFER: "1"
+    GPUSTACK_RUNTIME_DOCKER_RESOURCE_INJECTION_POLICY: "Env"
+  command:
+    - "--server-url"; - "http://172.100.10.2"
+    - "--worker-ip";  - "172.100.10.1"   # bridge gateway = 推論路由出口
+    - "--worker-port"; - "10150"
+  depends_on:
+    gpustack:
+      condition: service_healthy</code></pre>
+
+<h2 id="dc-network">網路定義</h2>
+<pre><span class="lang">yaml</span><code>networks:
+  gpustack-net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.100.10.0/24
+          gateway: 172.100.10.1   # 固定 gateway = 推論路由出口</code></pre>
+</div>
+
+
+<!-- ══════════════════════════════════════ API USAGE ══ -->
+<div class="page" id="page-api-usage">
+<div class="ph">
+  <div class="bc">模型 <span class="sep">›</span> 呼叫 API</div>
+  <h1>呼叫 API</h1>
+  <p class="sub">GPUStack 相容 OpenAI API 格式（<code>/v1/</code> 前綴）。本機直連或透過 Cloudflare Tunnel 皆可使用 OpenAI SDK / curl 呼叫。</p>
+</div>
+
+<h2 id="api-base">Base URL 與認證</h2>
+<div class="tw"><table>
+  <thead><tr><th>情境</th><th>Base URL</th><th>需要的 Header</th></tr></thead>
+  <tbody>
+    <tr>
+      <td>本機直連</td>
+      <td><span class="pb">http://localhost:8089/v1</span></td>
+      <td><code>Authorization: Bearer &lt;api-key&gt;</code></td>
+    </tr>
+    <tr>
+      <td>Cloudflare Tunnel（外網）</td>
+      <td><span class="pb">https://sub-api.yourdomain.com/v1</span></td>
+      <td><code>CF-Access-Client-Id</code><br><code>CF-Access-Client-Secret</code><br><code>Authorization: Bearer &lt;api-key&gt;</code></td>
+    </tr>
+  </tbody>
+</table></div>
+
+<div class="cl info"><div class="ci">ℹ</div><div>GPUStack API Key 在 Web UI → Settings → <strong>API Keys</strong> 建立。此 Key 僅用於 <code>Authorization</code> header，與 CF Service Token 獨立管理。</div></div>
+
+<h2 id="api-models">GET /v1/models — 列出已部署模型</h2>
+<div class="cmd">
+  <div class="cmd-bar">
+    <button class="ct" data-os="win"  onclick="tabClick(this)">&#x229E; PowerShell</button>
+    <div class="ct-sep"></div>
+    <button class="ct" data-os="bash" onclick="tabClick(this)">$ Bash</button>
+  </div>
+  <pre class="cp" data-os="win"><code># 本機
+Invoke-RestMethod -Uri "http://localhost:8089/v1/models" `
+  -Headers @{ Authorization = "Bearer &lt;api-key&gt;" } |
+  Select-Object -ExpandProperty data | Select-Object id, object
+
+# 外網（Cloudflare Tunnel）
+Invoke-RestMethod -Uri "https://sub-api.yourdomain.com/v1/models" `
+  -Headers @{
+    "CF-Access-Client-Id"     = "&lt;client-id&gt;"
+    "CF-Access-Client-Secret" = "&lt;client-secret&gt;"
+    "Authorization"           = "Bearer &lt;api-key&gt;"
+  } | Select-Object -ExpandProperty data | Select-Object id</code></pre>
+  <pre class="cp" data-os="bash"><code># 本機
+curl -s http://localhost:8089/v1/models \
+  -H "Authorization: Bearer &lt;api-key&gt;" \
+  | jq '.data[].id'
+
+# 外網（Cloudflare Tunnel）
+curl -s https://sub-api.yourdomain.com/v1/models \
+  -H "CF-Access-Client-Id: &lt;client-id&gt;" \
+  -H "CF-Access-Client-Secret: &lt;client-secret&gt;" \
+  -H "Authorization: Bearer &lt;api-key&gt;" \
+  | jq '.data[].id'</code></pre>
+</div>
+
+<h2 id="api-chat">POST /v1/chat/completions — 文字對話</h2>
+<div class="cmd">
+  <div class="cmd-bar">
+    <button class="ct" data-os="win"  onclick="tabClick(this)">&#x229E; PowerShell</button>
+    <div class="ct-sep"></div>
+    <button class="ct" data-os="bash" onclick="tabClick(this)">$ Bash</button>
+  </div>
+  <pre class="cp" data-os="win"><code>$body = @{
+  model    = "&lt;model-name&gt;"
+  messages = @(
+    @{ role = "system";  content = "You are a helpful assistant." }
+    @{ role = "user";    content = "你好，請介紹一下你自己。" }
+  )
+  max_tokens   = 512
+  temperature  = 0.7
+} | ConvertTo-Json -Depth 5
+
+Invoke-RestMethod -Method POST `
+  -Uri "http://localhost:8089/v1/chat/completions" `
+  -Headers @{ Authorization = "Bearer &lt;api-key&gt;" } `
+  -ContentType "application/json" `
+  -Body $body |
+  Select-Object -ExpandProperty choices |
+  Select-Object -First 1 |
+  ForEach-Object { $_.message.content }</code></pre>
+  <pre class="cp" data-os="bash"><code>curl -s http://localhost:8089/v1/chat/completions \
+  -H "Authorization: Bearer &lt;api-key&gt;" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "&lt;model-name&gt;",
+    "messages": [
+      {"role": "system",  "content": "You are a helpful assistant."},
+      {"role": "user",    "content": "你好，請介紹一下你自己。"}
+    ],
+    "max_tokens": 512,
+    "temperature": 0.7
+  }' | jq '.choices[0].message.content'</code></pre>
+</div>
+
+<h2 id="api-stream">Streaming（逐 Token 輸出）</h2>
+<div class="cmd">
+  <div class="cmd-bar">
+    <button class="ct" data-os="win"  onclick="tabClick(this)">&#x229E; PowerShell</button>
+    <div class="ct-sep"></div>
+    <button class="ct" data-os="bash" onclick="tabClick(this)">$ Bash</button>
+  </div>
+  <pre class="cp" data-os="win"><code># PowerShell 原生不支援 SSE 串流；建議改用 Python SDK 或 curl.exe
+curl.exe -s http://localhost:8089/v1/chat/completions `
+  -H "Authorization: Bearer &lt;api-key&gt;" `
+  -H "Content-Type: application/json" `
+  -d '{\"model\":\"&lt;model-name&gt;\",\"messages\":[{\"role\":\"user\",\"content\":\"Hello\"}],\"stream\":true}'</code></pre>
+  <pre class="cp" data-os="bash"><code>curl -sN http://localhost:8089/v1/chat/completions \
+  -H "Authorization: Bearer &lt;api-key&gt;" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "&lt;model-name&gt;",
+    "messages": [{"role": "user", "content": "Hello"}],
+    "stream": true
+  }'
+
+# 解析 SSE delta 內容
+# 每行格式：data: {"choices":[{"delta":{"content":"..."}}]}</code></pre>
+</div>
+
+<h3>Python SDK Streaming</h3>
+<pre><span class="lang">python</span><code>from openai import OpenAI
+
+client = OpenAI(
+    base_url="http://localhost:8089/v1",
+    api_key="&lt;api-key&gt;",
+)
+
+stream = client.chat.completions.create(
+    model="&lt;model-name&gt;",
+    messages=[{"role": "user", "content": "用繁體中文解釋量子糾纏"}],
+    stream=True,
+)
+for chunk in stream:
+    delta = chunk.choices[0].delta.content or ""
+    print(delta, end="", flush=True)
+print()  # 換行</code></pre>
+
+<h2 id="api-embed">POST /v1/embeddings — 向量嵌入</h2>
+<div class="cmd">
+  <div class="cmd-bar">
+    <button class="ct" data-os="win"  onclick="tabClick(this)">&#x229E; PowerShell</button>
+    <div class="ct-sep"></div>
+    <button class="ct" data-os="bash" onclick="tabClick(this)">$ Bash</button>
+  </div>
+  <pre class="cp" data-os="win"><code>$body = @{
+  model = "&lt;embedding-model-name&gt;"
+  input = @("這是第一段文字", "這是第二段文字")
+} | ConvertTo-Json
+
+Invoke-RestMethod -Method POST `
+  -Uri "http://localhost:8089/v1/embeddings" `
+  -Headers @{ Authorization = "Bearer &lt;api-key&gt;" } `
+  -ContentType "application/json" `
+  -Body $body |
+  Select-Object -ExpandProperty data |
+  ForEach-Object { "index $($_.index): dim=$($_.embedding.Count)" }</code></pre>
+  <pre class="cp" data-os="bash"><code>curl -s http://localhost:8089/v1/embeddings \
+  -H "Authorization: Bearer &lt;api-key&gt;" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "&lt;embedding-model-name&gt;",
+    "input": ["這是第一段文字", "這是第二段文字"]
+  }' | jq '.data[] | {index, dim: (.embedding | length)}'</code></pre>
+</div>
+
+<h2 id="api-vlm">VLM — 圖片輸入</h2>
+<div class="cl warn"><div class="ci">⚠</div><div>需先完成 <a onclick="nav('vlm')">VLM mmproj 設定</a>，否則圖片輸入回傳 <code>"image input is not supported"</code>。</div></div>
+
+<div class="cmd">
+  <div class="cmd-bar">
+    <button class="ct" data-os="win"  onclick="tabClick(this)">&#x229E; PowerShell</button>
+    <div class="ct-sep"></div>
+    <button class="ct" data-os="bash" onclick="tabClick(this)">$ Bash</button>
+  </div>
+  <pre class="cp" data-os="win"><code># URL 方式
+$body = @{
+  model    = "&lt;vlm-model-name&gt;"
+  messages = @(@{
+    role    = "user"
+    content = @(
+      @{ type = "text";      text      = "請描述這張圖片的內容" }
+      @{ type = "image_url"; image_url = @{ url = "https://example.com/image.jpg" } }
+    )
+  })
+  max_tokens = 512
+} | ConvertTo-Json -Depth 8
+
+Invoke-RestMethod -Method POST `
+  -Uri "http://localhost:8089/v1/chat/completions" `
+  -Headers @{ Authorization = "Bearer &lt;api-key&gt;" } `
+  -ContentType "application/json" -Body $body |
+  ForEach-Object { $_.choices[0].message.content }</code></pre>
+  <pre class="cp" data-os="bash"><code># URL 方式
+curl -s http://localhost:8089/v1/chat/completions \
+  -H "Authorization: Bearer &lt;api-key&gt;" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "&lt;vlm-model-name&gt;",
+    "messages": [{
+      "role": "user",
+      "content": [
+        {"type": "text",      "text": "請描述這張圖片的內容"},
+        {"type": "image_url", "image_url": {"url": "https://example.com/image.jpg"}}
+      ]
+    }],
+    "max_tokens": 512
+  }' | jq '.choices[0].message.content'
+
+# Base64 方式（本機圖片）
+IMG_B64=$(base64 -w0 /path/to/image.jpg)
+curl -s http://localhost:8089/v1/chat/completions \
+  -H "Authorization: Bearer &lt;api-key&gt;" \
+  -H "Content-Type: application/json" \
+  -d "{
+    \"model\": \"&lt;vlm-model-name&gt;\",
+    \"messages\": [{
+      \"role\": \"user\",
+      \"content\": [
+        {\"type\": \"text\", \"text\": \"這張圖裡有什麼？\"},
+        {\"type\": \"image_url\", \"image_url\": {\"url\": \"data:image/jpeg;base64,${IMG_B64}\"}}
+      ]
+    }],
+    \"max_tokens\": 512
+  }" | jq '.choices[0].message.content'</code></pre>
+</div>
+
+<h2 id="api-sdk">OpenAI SDK 完整範例</h2>
+<pre><span class="lang">python</span><code>from openai import OpenAI
+
+# ── 本機 ──
+client_local = OpenAI(
+    base_url="http://localhost:8089/v1",
+    api_key="&lt;api-key&gt;",
+)
+
+# ── 外網（Cloudflare Tunnel）──
+client_remote = OpenAI(
+    base_url="https://sub-api.yourdomain.com/v1",
+    api_key="&lt;api-key&gt;",
+    default_headers={
+        "CF-Access-Client-Id":     "&lt;client-id&gt;",
+        "CF-Access-Client-Secret": "&lt;client-secret&gt;",
+    },
+)
+
+# Chat Completions
+resp = client_local.chat.completions.create(
+    model="&lt;model-name&gt;",
+    messages=[{"role": "user", "content": "Hello"}],
+    temperature=0.7,
+    max_tokens=256,
+)
+print(resp.choices[0].message.content)
+
+# Embeddings
+emb = client_local.embeddings.create(
+    model="&lt;embedding-model&gt;",
+    input=["文字一", "文字二"],
+)
+print(f"dim = {len(emb.data[0].embedding)}")</code></pre>
+
+<h2 id="api-errors">常見錯誤代碼</h2>
+<div class="tw"><table>
+  <thead><tr><th>HTTP 狀態碼</th><th>原因</th><th>解決方式</th></tr></thead>
+  <tbody>
+    <tr><td><code>401 Unauthorized</code></td>  <td>API Key 錯誤或遺漏</td>             <td>確認 <code>Authorization: Bearer &lt;key&gt;</code> header 正確</td></tr>
+    <tr><td><code>403 Forbidden</code></td>     <td>CF Access 驗證失敗</td>             <td>確認 <code>CF-Access-Client-Id/Secret</code> 正確；Token 未過期</td></tr>
+    <tr><td><code>404 Not Found</code></td>     <td>模型名稱不存在 / 無 running instance</td><td>用 <code>GET /v1/models</code> 確認可用模型 ID</td></tr>
+    <tr><td><code>422 Unprocessable</code></td> <td>請求 JSON 欄位錯誤</td>             <td>確認 <code>model</code>、<code>messages</code> 欄位格式正確</td></tr>
+    <tr><td><code>502 Bad Gateway</code></td>   <td>CF Tunnel Access 設定錯誤</td>      <td>見 <a onclick="nav('cf-tunnel')">CF Tunnel → 502 診斷</a></td></tr>
+    <tr><td><code>503 Service Unavailable</code></td><td>模型正在載入中</td>            <td>等待推論容器啟動（Web UI → Models 確認狀態）</td></tr>
+  </tbody>
+</table></div>
+</div>
+
+</main>
+
+<aside class="toc">
+  <div class="toc-title">
+    <svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor"><path d="M2 4h12v1.5H2zm0 3.5h12V9H2zm0 3.5h8v1.5H2z"/></svg>
+    在此頁
+  </div>
+  <div id="toc-links"></div>
+</aside>
+</div>
+
+<script>
+// ── OS PREFERENCE ──────────────────────────────────────────
+let OS = localStorage.getItem('gpustack-os') || 'win';
+
+function setOS(os) {
+  OS = os;
+  localStorage.setItem('gpustack-os', os);
+  // global switcher
+  document.querySelectorAll('#global-os button').forEach(b =>
+    b.classList.toggle('active', b.dataset.os === os));
+  // all cmd blocks
+  applyOS();
+}
+
+function applyOS() {
+  document.querySelectorAll('.cmd').forEach(block => activatePane(block, OS));
+}
+
+function activatePane(block, os) {
+  block.querySelectorAll('.ct').forEach(b => b.classList.toggle('active', b.dataset.os === os));
+  block.querySelectorAll('.cp').forEach(p => p.classList.toggle('active', p.dataset.os === os));
+}
+
+function tabClick(btn) {
+  const os = btn.dataset.os;
+  setOS(os);  // propagate globally
+}
+
+// ── NAVIGATION ──────────────────────────────────────────────
+const TOC = {
+  overview:    [['arch','整體架構'],['network','網路設計'],['structure','目錄結構'],['prereq','前提條件']],
+  quickstart:  [],
+  envvars:     [['env-all','變數說明'],['env-wsl2','WSL2 路徑'],['env-yaml','gpustack.yaml']],
+  'cf-tunnel': [['ct-strategy','雙 Hostname'],['ct-create','建立 Tunnel'],['ct-hostnames','Public Hostnames'],['ct-502','502 診斷']],
+  'cf-access': [['ca-app-a','Application A'],['ca-app-b','Application B'],['ca-security','安全層級']],
+  'svc-token': [['st-create','建立'],['st-usage','API 請求'],['st-key','GPUStack API Key'],['st-test','驗證']],
+  models:      [['m-deploy','部署流程'],['m-ref','推薦配置'],['m-oom','OOM 處理']],
+  vlm:         [['vlm-path','mmproj 路徑'],['vlm-api','API 方式'],['vlm-webui','Web UI 方式']],
+  ops:         [['ops-status','狀態確認'],['ops-restart','重啟'],['ops-update','更新'],['ops-reset','資料庫重建'],['ops-backup','備份']],
+  ports:       [],
+  troubleshoot:[['ts-gpu','GPU 偵測'],['ts-404','模型 404'],['ts-tunnel','Tunnel'],['ts-502','502'],['ts-worker','Worker'],['ts-oom','OOM'],['ts-vlm','VLM']],
+  entrypoints: [['ep-server','entrypoint-server'],['ep-worker','entrypoint-worker'],['ep-table','Workaround 對照']],
+  compose:     [['dc-server','Server'],['dc-worker','Worker'],['dc-network','網路定義']],
+  'api-usage': [['api-base','Base URL 與認證'],['api-models','列出模型'],['api-chat','Chat Completions'],['api-stream','Streaming'],['api-embed','Embeddings'],['api-vlm','VLM 圖片輸入'],['api-sdk','OpenAI SDK'],['api-errors','錯誤代碼']],
+};
+
+let cur = 'overview';
+
+function nav(page) {
+  document.getElementById('page-' + cur).classList.remove('active');
+  document.getElementById('ni-' + cur).classList.remove('active');
+  cur = page;
+  document.getElementById('page-' + page).classList.add('active');
+  document.getElementById('ni-' + page).classList.add('active');
+  buildToc(page);
+  applyOS();
+  window.scrollTo(0, 0);
+}
+
+function buildToc(page) {
+  const el = document.getElementById('toc-links');
+  const items = TOC[page] || [];
+  if (!items.length) { el.innerHTML = '<span style="font-size:.73rem;color:var(--text-muted)">—</span>'; return; }
+  el.innerHTML = items.map(([id, lbl]) =>
+    `<a class="ti" data-id="${id}" onclick="scrollTo_('${id}')">${lbl}</a>`
+  ).join('');
+}
+
+function scrollTo_(id) {
+  const el = document.getElementById(id);
+  if (el) el.scrollIntoView({ behavior:'smooth', block:'start' });
+  document.querySelectorAll('.ti').forEach(a => a.classList.toggle('active', a.dataset.id === id));
+}
+
+const obs = new IntersectionObserver(entries => {
+  entries.forEach(e => {
+    if (e.isIntersecting)
+      document.querySelectorAll('.ti').forEach(a => a.classList.toggle('active', a.dataset.id === e.target.id));
+  });
+}, { rootMargin:'-72px 0px -65% 0px' });
+document.querySelectorAll('h2[id]').forEach(h => obs.observe(h));
+
+// ── INIT ──────────────────────────────────────────────────
+buildToc('overview');
+setOS(OS);
+</script>
+</body>
+</html>
