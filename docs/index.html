@@ -210,9 +210,22 @@
     border-radius:8px;flex-shrink:0;transition:background .15s;padding:0}
   .ham:hover{background:var(--surface-2)}
 
+  /* ── FOOTER ── */
+  .footer{
+    margin-left:calc(var(--side-gap) + var(--sidebar-w));
+    margin-right:calc(var(--side-gap) + var(--toc-w));
+    background:var(--surface);border-top:1px solid var(--border);
+    box-shadow:0 0 0 1px var(--border);padding:20px 56px;
+    display:flex;align-items:center;justify-content:space-between;
+    font-size:.78rem;color:var(--text-muted);gap:12px
+  }
+  .footer a{color:var(--text-muted);transition:color .12s}
+  .footer a:hover{color:var(--accent);text-decoration:none}
+
   @media(max-width:1200px){
     .toc{display:none}
     .main{margin-right:var(--side-gap)}
+    .footer{margin-right:var(--side-gap)}
   }
   @media(max-width:800px){
     .ham{display:flex}
@@ -225,6 +238,7 @@
     }
     .sidebar.open{transform:translateX(0)}
     .main{margin-left:var(--side-gap);margin-right:var(--side-gap);padding:32px 18px}
+    .footer{margin-left:var(--side-gap);margin-right:var(--side-gap);padding:16px 18px;flex-direction:column;gap:4px;text-align:center}
   }
 </style>
 </head>
@@ -1543,5 +1557,16 @@ document.querySelectorAll('h2[id]').forEach(h => obs.observe(h));
 buildToc('overview');
 setOS(OS);
 </script>
+
+<footer class="footer">
+  <span>GPUStack 部署手冊 &nbsp;·&nbsp; v2.1.2</span>
+  <span>
+    © 2026 <a href="https://github.com/felimet" target="_blank" rel="noopener">felimet</a>
+    &nbsp;·&nbsp;
+    <a href="https://github.com/felimet/gpustack-api" target="_blank" rel="noopener">GitHub</a>
+    &nbsp;·&nbsp;
+    <a href="https://github.com/felimet/gpustack-api/blob/main/LICENSE" target="_blank" rel="noopener">MIT License</a>
+  </span>
+</footer>
 </body>
 </html>
